@@ -25,9 +25,13 @@ const auth = asyncHandler(async (req, res, next) => {
       const { email } = decode.user;
       const user = await users.findOne({ email }).select("-password");
 
-      req.user = user;
+      if (user) {
+        req.user = user;
 
-      next();
+        next();
+      } else {
+        throw new Error("token invalid");
+      }
     } catch (error) {
       res.status(401);
       throw new Error("token is invalid");

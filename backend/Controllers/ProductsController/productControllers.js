@@ -117,10 +117,10 @@ const getProducts = asyncHandler(async (req, res) => {
   //   console.log(price, "  ----", query);
 
   try {
-    if (query || sort) {
-      const productsss = await products.find({ title: "oneplus" });
-      console.log(productsss);
-    }
+    // if (query || sort) {
+    //   const productsss = await products.find({ title: "oneplus" });
+    //   console.log(productsss);
+    // }
     const productsss = await products.find();
     if (productsss) {
       res.status(200).json({

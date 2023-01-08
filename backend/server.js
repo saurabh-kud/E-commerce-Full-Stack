@@ -22,9 +22,10 @@ connectDB();
 app.get("/", (req, res) => {
   res.send({ msg: "you are on right path keep going " });
 });
-
+//all the routes for serve
 app.use("/api/user", require("./Routes/UserRoutes/userRoute"));
 app.use("/api/prod", require("./Routes/ProductsRoute/productsRoute"));
+app.use("/api/users", require("./Routes/CartRoute/cartRoute"));
 
 app.use(errorHandler);
 
