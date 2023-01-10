@@ -26,6 +26,7 @@ app.get("/", (req, res) => {
 app.use("/api/user", require("./Routes/UserRoutes/userRoute"));
 app.use("/api/prod", require("./Routes/ProductsRoute/productsRoute"));
 app.use("/api/users", require("./Routes/CartRoute/cartRoute"));
+app.use("/api/users", require("./Routes/OrderRoute/orderRoute"));
 
 app.use(errorHandler);
 

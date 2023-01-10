@@ -63,6 +63,7 @@ const authAdmin = asyncHandler(async (req, res, next) => {
       const user = await users.findOne({ email }).select("-password");
 
       if (user.isAdmin) {
+        req.user = user;
         next();
       } else {
         res.status(401);
