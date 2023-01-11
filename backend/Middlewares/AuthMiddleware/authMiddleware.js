@@ -3,7 +3,7 @@ const users = require("../../Models/UsersModel/userModel");
 const asyncHandler = require("express-async-handler");
 
 const auth = asyncHandler(async (req, res, next) => {
-  const reqHeader = req.headers?.Authorization || req.headers?.authorization;
+  const reqHeader = req.headers.Authorization || req.headers.authorization;
 
   if (!reqHeader) {
     res.status(401);
@@ -40,7 +40,7 @@ const auth = asyncHandler(async (req, res, next) => {
 });
 
 const authAdmin = asyncHandler(async (req, res, next) => {
-  const reqHeader = req.headers?.Authorization || req.headers?.authorization;
+  const reqHeader = req.headers.Authorization || req.headers.authorization;
 
   if (!reqHeader) {
     res.status(401);

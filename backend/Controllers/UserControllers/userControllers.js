@@ -192,7 +192,7 @@ const refresh = asyncHandler(async (req, res) => {
     throw new Error("provide valid refresh token");
   }
 
-  const email = decode?.user?.email;
+  const email = decode.user.email;
   if (!email) {
     res.status(404);
     throw new Error("provide valid refresh token");
