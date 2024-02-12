@@ -2,25 +2,14 @@ const asyncHandler = require("express-async-handler");
 const cart = require("../../Models/CartModel/cartModel");
 const user = require("../../Models/UsersModel/userModel");
 const order = require("../../Models/OrderModel/orderModel");
+const crypto = require("crypto");
+const rzpOb = require("../../config/razorpay");
+const razorpay = rzpOb();
 
+//create order for validated user
 const createOrder = asyncHandler(async (req, res) => {
   const userId = req.params.id;
-  // console.log(req.body);
-  // const { status, cancellable } = req.body;
 
-  // if (!status || !cancellable) {
-  //   res.status(400);
-  //   throw new Error("all is mandotory");
-  // }
-  // if (
-  //   !status === "pending" ||
-  //   !status === "completed" ||
-  //   !status === "cancelled"
-  // ) {
-  //   res.status(400);
-  //   throw new Error("status should be pending or completed or completed");
-  // }
-  //checking userId in param and token is equal or not
   if (userId != req.user._id) {
     res.status(401);
     throw new Error("not Authorized");
@@ -32,23 +21,121 @@ const createOrder = asyncHandler(async (req, res) => {
       res.status(404);
       throw new Error("cart doesn't exist");
     }
+    // const cartDetails = {
+    //   userId,
+    //   items: isCartAvaible.items,
+    //   totalPrice: isCartAvaible.totalPrice,
+    //   totalItems: isCartAvaible.totalItems,
+    //   status: "pending",
+    //   iscancellable: true,
+    // };
+
+    var options = {
+      amount: isCartAvaible.totalPrice * 100, // amount in the smallest currency unit
+      currency: "INR",
+      receipt: userId,
+      notes: { userId },
+    };
+    const rzpOrder = await razorpay.orders.create(options);
+    res.json({
+      status: true,
+      message: "order Placed sucessfully",
+      data: { ...rzpOrder },
+    });
+
+    // const orderFromDb = await order.create(cartDetails);
+    // if (orderFromDb) {
+    //   await cart.deleteOne({ userId });
+    //   res.status(201);
+    //   res.json({
+    //     status: true,
+    //     message: "order created",
+    //     data: orderFromDb,
+    //   });
+    // } else {
+    //   res.status(400);
+    //   throw new Error("something went wrong");
+    // }
+  } catch (error) {
+    throw new Error(error.message);
+  }
+});
+
+//create order for diff site not validated user
+const createOrderNon = asyncHandler(async (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    var options = {
+      amount: amount * 100, // amount in the smallest currency unit
+      currency: "INR",
+    };
+    const rzpOrder = await razorpay.orders.create(options);
+    res.json({
+      status: true,
+      message: "order created sucessfully",
+      data: { ...rzpOrder },
+    });
+  } catch (error) {
+    throw new Error(error.message);
+  }
+});
+
+//validate payment for validated user
+
+const verifyOrder = asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+
+  if (userId != req.user._id) {
+    res.status(401);
+    throw new Error("not Authorized");
+  }
+
+  try {
+    const isCartAvaible = await cart.findOne({ userId });
+
+    if (!isCartAvaible || isCartAvaible.items.length <= 0) {
+      res.status(404);
+      throw new Error("cart doesn't exist");
+    }
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+      req.body;
+
+    const sha = crypto.createHmac("sha256", process.env.RAZOR_PAY_SECRET);
+    //order_id + "|" + razorpay_payment_id
+    sha.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const digest = sha.digest("hex");
+    if (digest !== razorpay_signature) {
+      throw new Error("Transaction is not legit!");
+    }
+
     const cartDetails = {
       userId,
       items: isCartAvaible.items,
       totalPrice: isCartAvaible.totalPrice,
       totalItems: isCartAvaible.totalItems,
-      status: "pending",
+      r_paymentId: razorpay_payment_id,
+      r_orderId: razorpay_order_id,
+      status: "Paid",
       iscancellable: true,
     };
-
     const orderFromDb = await order.create(cartDetails);
+
     if (orderFromDb) {
       await cart.deleteOne({ userId });
       res.status(201);
       res.json({
         status: true,
         message: "order Placed sucessfully",
-        data: orderFromDb,
+        data: {
+          rporderId: razorpay_order_id,
+          paymentId: razorpay_payment_id,
+          status: orderFromDb.status,
+          items: orderFromDb.items,
+          totalPrice: orderFromDb.totalPrice,
+          orderId: orderFromDb._id,
+        },
       });
     } else {
       res.status(400);
@@ -59,6 +146,35 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 });
 
+//for verification of order
+const verifyOrderNon = asyncHandler(async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+      req.body;
+
+    const sha = crypto.createHmac("sha256", process.env.RAZOR_PAY_SECRET);
+    //order_id + "|" + razorpay_payment_id
+    sha.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const digest = sha.digest("hex");
+    if (digest !== razorpay_signature) {
+      throw new Error("Transaction is not legit!");
+    }
+
+    res.status(201);
+    res.json({
+      status: true,
+      message: "order Placed sucessfully",
+      data: {
+        rporderId: razorpay_order_id,
+        paymentId: razorpay_payment_id,
+      },
+    });
+  } catch (error) {
+    throw new Error(error.message);
+  }
+});
+
+//for updating order details
 const updateOrder = asyncHandler(async (req, res) => {
   const { id: userId, orderid: orderId } = req.params;
   const { status } = req.body;
@@ -217,6 +333,9 @@ const deleteOrder = asyncHandler(async (req, res) => {
 
 module.exports = {
   createOrder,
+  createOrderNon,
+  verifyOrder,
+  verifyOrderNon,
   updateOrder,
   getOrder,
   getSingleOrder,
